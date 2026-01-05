@@ -34,7 +34,7 @@ public class decodeRedTop extends LinearOpMode {
 
         Action testtrajec = drive.actionBuilder(initialPose)
                 .setTangent(0)
-                .splineToConstantHeading(new Vector2d(-12,20),(Math.PI))
+                .splineToConstantHeading(new Vector2d(-12,20),(Math.PI * ((double) 1/2)))
                 .build();
 
 

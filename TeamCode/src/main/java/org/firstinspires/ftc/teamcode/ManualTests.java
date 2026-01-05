@@ -4,7 +4,6 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -17,8 +16,8 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
 import java.util.List;
 
-@TeleOp(name = "Decode Mecanum + Color", group = "Drive")
-public class asfasf extends OpMode {
+@TeleOp(name = "ManualTests", group = "Drive")
+public class ManualTests extends OpMode {
 
     // =====================
 // TURRET SERVOS
@@ -56,7 +55,7 @@ public class asfasf extends OpMode {
     //All the servo values for the spinner that I can use
     final double SPIN_POS_1 = 0.985;
     final double SPIN_POS_2 = 0.86;
-    final double SPIN_POS_3 = 0.69;
+    final double SPIN_POS_3 = 0.67;
     final double SPIN_POS_4 = 0.5567;
     final double SPIN_POS_5 = 0.41;
     final double SPIN_POS_6 = 0.2467;
@@ -215,6 +214,11 @@ public class asfasf extends OpMode {
 
     @Override
     public void loop() {
+        if (spinnerBefore != spinnerAfter) {
+            somethingHappened = true;
+        }else {
+            somethingHappened = false;
+        }
 // --------------------
 // MECANUM DRIVE (SCALED)
 // --------------------
@@ -258,26 +262,27 @@ public class asfasf extends OpMode {
         }else {
             intake.setPower(0);
         }
-        //pusher.setPosition(gamepad1.left_trigger >= 0.4 ? 0.5 : 0.9367);
+        spinnerBefore = spinner.getPosition();
+        pusher.setPosition(gamepad1.left_trigger >= 0.4 ? 0.5 : 0.9367);
 
         // Spinner positions
-        if (gamepad1.a) spinner.setPosition(Math.max(0.0, Math.min(1.0, (spinner.getPosition() + 0.15))));
+        if (gamepad1.right_bumper) spinner.setPosition(Math.max(0.0, Math.min(1.0, (spinner.getPosition() + 0.15))));
 
         //if (gamepad1.dpad_down) spinner.setPosition(0.9367);
         //if (gamepad1.dpad_right) spinner.setPosition(0.775);
         //if (gamepad1.dpad_left) spinner.setPosition(0.623);
         //SHOOTER TICK SPSED DECIDER
-        if (gamepad2.a) {
-            SHOOTER_TICK_SPEED = 967;
+        if (gamepad1.a) {
+            spinner.setPosition(SPIN_POS_1);
         }
-        if (gamepad2.b) {
-            SHOOTER_TICK_SPEED = 1200;
+        if (gamepad1.b) {
+            spinner.setPosition(SPIN_POS_2);
         }
-        if (gamepad2.x) {
-            SHOOTER_TICK_SPEED = 2000;
+        if (gamepad1.x) {
+            spinner.setPosition(SPIN_POS_3);
         }
         //SHOOTA
-        if (gamepad2.left_bumper) {
+        if (gamepad1.left_bumper) {
             shoot1.setVelocity(SHOOTER_TICK_SPEED);
             shoot2.setVelocity(SHOOTER_TICK_SPEED);
         } else {
@@ -286,7 +291,7 @@ public class asfasf extends OpMode {
         }
 
         //SHOOTER AND INTAKE OVERRIDE
-        if (gamepad2.y) {
+        if (gamepad1.y) {
             intakeState = IntakeState.CHAMBERS_FULL;
             shootingState = ShootingState.READY;
         }
@@ -308,10 +313,19 @@ public class asfasf extends OpMode {
         telemetry.addData("PUSHER POS: ", pusher.getPosition());
         telemetry.addData("SPINNER POS: ", spinner.getPosition());
 
-        c1 = colorBench.getDetectedColor(0, telemetry);
-        c2 = colorBench.getDetectedColor(1, telemetry);
-        c3 = colorBench.getDetectedColor(2, telemetry);
-        c4 = colorBench.getDetectedColor(3, telemetry);
+        if (somethingHappened) {
+            // Spinner moved → allow sensor update
+            c1 = colorBench.getDetectedColor(0, telemetry);
+            c2 = colorBench.getDetectedColor(1, telemetry);
+            c3 = colorBench.getDetectedColor(2, telemetry);
+            c4 = colorBench.getDetectedColor(3, telemetry);
+        } else {
+            // Spinner stable → lock last known colors
+            c1 = colorBench.getLastSeenColor(0);
+            c2 = colorBench.getLastSeenColor(1);
+            c3 = colorBench.getLastSeenColor(2);
+            c4 = colorBench.getLastSeenColor(3);
+        }
 
 
         // -----------------
@@ -385,7 +399,7 @@ public class asfasf extends OpMode {
 
         telemetry.update();
         //Intake Finite State Code
-
+/*
         switch (intakeState) {
             case BEFORE_START:
                 spinner.setPosition(POSITION_LIST[NEXT_POSITION]);
@@ -466,7 +480,7 @@ public class asfasf extends OpMode {
                 break;
             case PUSHER_DOWN:
                 pusher.setPosition(PUSHER_POS_DOWN);
-                if (shootingTimer.seconds() >= 1) {
+                if (shootingTimer.seconds() >= 0.7766) {
                     shootingTimer.reset();
                     shootingState = ShootingState.SPINNER_FULL;
                 }
@@ -488,13 +502,12 @@ public class asfasf extends OpMode {
                 shootingTimer.reset();
                 pusher.setPosition(PUSHER_POS_DOWN);
                 // || (c1 == colorSensorDecode.DetectedColor.PURPLE || c1 == colorSensorDecode.DetectedColor.GREEN)
-                //(((c4 == colorSensorDecode.DetectedColor.PURPLE || c4 == colorSensorDecode.DetectedColor.GREEN)) && (c2 == colorSensorDecode.DetectedColor.PURPLE || c2 == colorSensorDecode.DetectedColor.GREEN) && (c3 == colorSensorDecode.DetectedColor.PURPLE || c3 == colorSensorDecode.DetectedColor.GREEN)) &&
-                if ((intakeState == IntakeState.CHAMBERS_FULL)) {
+                if ((((c4 == colorSensorDecode.DetectedColor.PURPLE || c4 == colorSensorDecode.DetectedColor.GREEN)) && (c2 == colorSensorDecode.DetectedColor.PURPLE || c2 == colorSensorDecode.DetectedColor.GREEN) && (c3 == colorSensorDecode.DetectedColor.PURPLE || c3 == colorSensorDecode.DetectedColor.GREEN)) && (intakeState == IntakeState.CHAMBERS_FULL)) {
                     shootingState = ShootingState.READY;
                 }
                 break;
         }
-
+*/
 
         //TURRET CODES
         if (gamepad2.left_trigger > 0.2) {
@@ -505,6 +518,7 @@ public class asfasf extends OpMode {
             updateTurretFromAprilTag();
         }
 
+        spinnerAfter = spinner.getPosition();
         telemetry.addData("Turret Mode",
                 gamepad2.left_trigger > 0.2 ? "MANUAL RESET" : "AUTO TRACK");
 
@@ -512,26 +526,26 @@ public class asfasf extends OpMode {
         telemetry.update();
     }
     private void updateTurretFromAprilTag() {
-            if (aprilTag == null || visionPortal == null) return;
+        if (aprilTag == null || visionPortal == null) return;
 
-            List<AprilTagDetection> detections = aprilTag.getDetections();
-            if (detections.isEmpty()) return;
+        List<AprilTagDetection> detections = aprilTag.getDetections();
+        if (detections.isEmpty()) return;
 
-            AprilTagDetection tag = detections.get(0);
-            if (tag.ftcPose == null) return;
+        AprilTagDetection tag = detections.get(0);
+        if (tag.ftcPose == null) return;
 
-            double bearing = tag.ftcPose.bearing;
+        double bearing = tag.ftcPose.bearing;
 
-            double kP = 1.0 / 670;
-            double target = turretPos + bearing * kP;
+        double kP = 1.0 / 670;
+        double target = turretPos + bearing * kP;
 
-            target = Math.max(0.0, Math.min(1.0, target));
+        target = Math.max(0.0, Math.min(1.0, target));
 
-            // Smooth toward target
-            turretPos += (target - turretPos) * 0.25;
+        // Smooth toward target
+        turretPos += (target - turretPos) * 0.25;
 
-            turret1.setPosition(turretPos);
-            turret2.setPosition(turretPos);
+        turret1.setPosition(turretPos);
+        turret2.setPosition(turretPos);
     }
 
     private void returnTurretHome() {
