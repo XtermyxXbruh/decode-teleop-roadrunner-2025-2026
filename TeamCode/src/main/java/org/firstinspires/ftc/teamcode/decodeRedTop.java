@@ -16,7 +16,7 @@ public class decodeRedTop extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        Pose2d initialPose = new Pose2d(-63,0,Math.toRadians(90));
+        Pose2d initialPose = new Pose2d(-63,9,Math.toRadians(90));
         MecanumDrive drive = new MecanumDrive(hardwareMap, initialPose);
 
         /*
@@ -32,9 +32,9 @@ public class decodeRedTop extends LinearOpMode {
 
          */
 
-        Action testtrajec = drive.actionBuilder(initialPose)
-                .setTangent(0)
-                .splineToConstantHeading(new Vector2d(-12,20),(Math.PI * ((double) 1/2)))
+        Action trajectory2 = drive.actionBuilder(new Pose2d(-12,33,Math.toRadians(90)))
+                .setTangent(Math.toRadians(270))
+                .splineToConstantHeading(new Vector2d(-10,9),Math.toRadians(270))
                 .build();
 
 
@@ -44,6 +44,6 @@ public class decodeRedTop extends LinearOpMode {
 
         //Actions.runBlocking(trajectory);
         //Actions.runBlocking(trajectory2);
-        Actions.runBlocking(testtrajec);
+        Actions.runBlocking(trajectory2);
     }
 }

@@ -49,9 +49,10 @@ public class IntakeSubsystem {
         switch (intakeState) {
 
             case BEFORE_START:
-                intakeTimer.reset();
-                nextSpinnerIndex = 0;
-                intakeState = IntakeState.READY;
+                if (intakeTimer.seconds() >= 1) {
+                    nextSpinnerIndex = 0;
+                    intakeState = IntakeState.READY;
+                }
                 break;
 
             case READY:
@@ -81,9 +82,10 @@ public class IntakeSubsystem {
                 break;
 
             case CHAMBERS_FULL:
+                intakeTimer.reset();
                 if (shootingState == Shooter.State.NO_BALLS) {
                     nextSpinnerIndex = 0;
-                    intakeState = IntakeState.READY;
+                    intakeState = IntakeState.BEFORE_START;
                 }
                 break;
 
@@ -120,5 +122,9 @@ public class IntakeSubsystem {
 
     public void stopIntake() {
         intakeMotor.setPower(0.0);
+    }
+
+    public void reverseIntake() {
+        intakeMotor.setPower(-1);
     }
 }

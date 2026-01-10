@@ -263,7 +263,7 @@ public class ManualTests extends OpMode {
             intake.setPower(0);
         }
         spinnerBefore = spinner.getPosition();
-        pusher.setPosition(gamepad1.left_trigger >= 0.4 ? 0.5 : 0.9367);
+        pusher.setPosition(gamepad1.left_trigger >= 0.4 ? 0.5 : 0.06);
 
         // Spinner positions
         if (gamepad1.right_bumper) spinner.setPosition(Math.max(0.0, Math.min(1.0, (spinner.getPosition() + 0.15))));

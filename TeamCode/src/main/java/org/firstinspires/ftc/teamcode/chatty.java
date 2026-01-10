@@ -8,13 +8,6 @@ import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.teamcode.colorSensorDecode;
 import org.firstinspires.ftc.teamcode.IntakeSubsystem;
 
-import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
-import org.firstinspires.ftc.vision.VisionPortal;
-import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
-import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
-
-import java.util.List;
-
 
 @TeleOp(name = "NewClassTest", group = "Drive")
 public class chatty extends OpMode {
@@ -39,11 +32,11 @@ public class chatty extends OpMode {
     // SPINNER POSITIONS
     // =====================
     final double[] POSITION_LIST = {
-            0.985, 0.94,
-            0.853,  0.79,
-            0.6877,  0.64,
-            0.5567,0.49,
-            0.41,  0.34,
+            0.985, 0.942,
+            0.85,  0.779,
+            0.6955,  0.63,
+            0.55,  0.485,
+            0.4,  0.322,
             0.2467,0.17,
             0.1,   0.2,
             0
@@ -64,19 +57,17 @@ public class chatty extends OpMode {
     private Servo turret1, turret2;
     private double turretPos = 0.38;
 
-    private static final double TURRET_HOME = 0.38;
+    private static double TURRET_HOME = 0.38;
     private static final double TURRET_RETURN_SPEED = 0.01;
-
-    // =====================
-    // APRILTAG VISION
-    // =====================
-    private VisionPortal visionPortal;
-    private AprilTagProcessor aprilTag;
 
     //GREEN BALL SHOOT ORDER
     int BALL_DESIRED_ORDER = 1;
     int GREEN_BALL_POS = 1;
 
+    double lastServoPos;
+
+    //camera
+    private CameraSubsystem camera;
     @Override
     public void init() {
 
@@ -120,14 +111,9 @@ public class chatty extends OpMode {
         turret1.setPosition(turretPos);
         turret2.setPosition(turretPos);
 
-    // AprilTag
-        aprilTag = new AprilTagProcessor.Builder().build();
-
-        visionPortal = new VisionPortal.Builder()
-                .setCamera(hardwareMap.get(WebcamName.class, "Webcam"))
-                .addProcessor(aprilTag)
-                .build();
-
+        //camera
+        camera = new CameraSubsystem();
+        camera.init(hardwareMap);
 
         // Color sensors
         colorBench = new colorSensorDecode();
@@ -148,6 +134,8 @@ public class chatty extends OpMode {
         shooter.setStartShootPos(0);
 
         shooter.setStartShootPos(0);
+
+        pusher.setPosition(0.05);
 
         telemetry.addLine("Ready!");
         telemetry.update();
@@ -187,22 +175,60 @@ public class chatty extends OpMode {
         frontRight.setPower(fr);
         backRight.setPower(br);
 
+        if (spinner.getPosition() == POSITION_LIST[0]
+                || spinner.getPosition() == POSITION_LIST[2]
+                || spinner.getPosition() == POSITION_LIST[4]) {
+            lastServoPos = spinner.getPosition();
+        }
+
+        // --------------------
+        // TURRET CONTROL
+        // --------------------
+        camera.update();
+
+        if (gamepad2.left_trigger > 0.2) {
+            returnTurretHome();
+        } else if (camera.hasTarget()) {
+            double bearing = camera.getBearing();
+
+            double kP = 1.0 / 300;
+            double desired = turretPos + bearing * kP;
+            desired = Math.max(0.0, Math.min(1.0, desired));
+            turretPos += (desired - turretPos) * 0.25;
+
+            turret1.setPosition(turretPos);
+            turret2.setPosition(turretPos);
+        }
+
         boolean overrideShoot = gamepad2.y;
 
         //TODO: ALL THE BUUUUTOOOOONS
         if (overrideShoot) {
+            shooter.setStartIndexFromOrder(BALL_DESIRED_ORDER,GREEN_BALL_POS,spinner.getPosition());
             intakeSubsystem.forceChambersFull();
+            shooter.goToNextPosition();
             shooter.forceReady();
         }
 
-        if (gamepad2.dpad_up) {
-            SHOOTER_TICK_SPEED = 1767;
+        if (gamepad1.dpad_up) {
+            SHOOTER_TICK_SPEED = 1367;
         }
-        if (gamepad2.dpad_down) {
+        if (gamepad1.dpad_down) {
             SHOOTER_TICK_SPEED = 967;
         }
-        if (gamepad2.dpad_right || gamepad2.dpad_left) {
+        if (gamepad1.dpad_right || gamepad2.dpad_left) {
             SHOOTER_TICK_SPEED = 1200;
+        }
+
+
+        if (gamepad2.dpad_up) {
+            TURRET_HOME = 0.5;
+        }
+        if (gamepad2.dpad_left) {
+            TURRET_HOME = 0.62;
+        }
+        if (gamepad2.dpad_right) {
+            TURRET_HOME = 0.38;
         }
 
         // --------------------
@@ -230,14 +256,18 @@ public class chatty extends OpMode {
         else if (c2 == colorSensorDecode.DetectedColor.GREEN) GREEN_BALL_POS = 2;
         else if (c3 == colorSensorDecode.DetectedColor.GREEN) GREEN_BALL_POS = 3;
 
-        if (gamepad2.dpad_up) BALL_DESIRED_ORDER = 1;
-        else if (gamepad2.dpad_right) BALL_DESIRED_ORDER = 2;
-        else if (gamepad2.dpad_left) BALL_DESIRED_ORDER = 3;
+        if (gamepad2.left_bumper) {
+            BALL_DESIRED_ORDER = 67;
+        }
+        else if (gamepad2.a) BALL_DESIRED_ORDER = 1;
+        else if (gamepad2.b) BALL_DESIRED_ORDER = 2;
+        else if (gamepad2.x) BALL_DESIRED_ORDER = 3;
 
         if (shooter.isIdle()) {
             shooter.setStartIndexFromOrder(
                     BALL_DESIRED_ORDER,
-                    GREEN_BALL_POS
+                    GREEN_BALL_POS,
+                    spinner.getPosition()
             );
         }
 // --------------------
@@ -280,16 +310,6 @@ public class chatty extends OpMode {
             shoot2.setVelocity(0);
         }
 
-        // --------------------
-// TURRET CONTROL
-// --------------------
-        if (gamepad2.left_trigger > 0.2) {
-            // Manual override → return home
-            returnTurretHome();
-        } else {
-            // Auto track AprilTag
-            updateTurretFromAprilTag();
-        }
 
         telemetry.addData("Turret Pos", turretPos);
 
@@ -297,39 +317,10 @@ public class chatty extends OpMode {
         telemetry.addData("Intake State", intakeSubsystem.getState());
         telemetry.addData("Next Spinner Index", intakeSubsystem.getNextSpinnerIndex());
         telemetry.addData("Shooter State", shooter.getState());
+
+        telemetry.addData("pusherPos", pusher.getPosition());
+        telemetry.addData("spinnerPos", spinner.getPosition());
         telemetry.update();
-    }
-    private void updateTurretFromAprilTag() {
-        if (aprilTag == null || visionPortal == null) return;
-
-        List<AprilTagDetection> detections = aprilTag.getDetections();
-        if (detections.isEmpty()) return;
-
-        AprilTagDetection target = null;
-
-        // ONLY TRACK ID 24 OR 20
-        for (AprilTagDetection tag : detections) {
-            if (tag.id == 24 || tag.id == 20) {
-                target = tag;
-                break;
-            }
-        }
-
-        if (target == null || target.ftcPose == null) return;
-
-        double bearing = target.ftcPose.bearing;
-
-        // Proportional control
-        double kP = 1.0 / 410;
-        double desired = turretPos + bearing * kP;
-
-        desired = Math.max(0.0, Math.min(1.0, desired));
-
-        // Smooth movement
-        turretPos += (desired - turretPos) * 0.25;
-
-        turret1.setPosition(turretPos);
-        turret2.setPosition(turretPos);
     }
 
     private void returnTurretHome() {

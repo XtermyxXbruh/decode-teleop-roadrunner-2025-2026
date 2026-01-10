@@ -109,8 +109,8 @@ public class asfasf extends OpMode {
     int START_NEXT_SHOOT_POS = 0;
     int NEXT_SHOOT_POS = 0;
     //PUSHER POSITIONs
-    final double PUSHER_POS_UP = 0.41;
-    final double PUSHER_POS_DOWN = 0.945;
+    final double PUSHER_POS_UP = 0.5;
+    final double PUSHER_POS_DOWN = 0.09;
 
     // Drive motors
     private DcMotor frontLeft, frontRight, backLeft, backRight;

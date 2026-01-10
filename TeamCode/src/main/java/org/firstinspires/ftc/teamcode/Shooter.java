@@ -42,8 +42,8 @@ public class Shooter {
         this.pusher = pusher;
         this.positions = positions;
 
-        this.PUSHER_UP = 0.41;
-        this.PUSHER_DOWN = 0.945;
+        this.PUSHER_UP = 0.467;
+        this.PUSHER_DOWN = 0.05;
     }
 
     public void setStartShootPos(int pos) {
@@ -66,7 +66,7 @@ public class Shooter {
 
             case PUSHER_UP:
                 spinner.setPosition(positions[nextShootPos]);
-                if (timer.seconds() > 0.5) {
+                if (timer.seconds() > 0.2) {
                     pusher.setPosition(PUSHER_UP);
                     nextShootPos++;
                     timer.reset();
@@ -75,7 +75,7 @@ public class Shooter {
                 break;
 
             case SPINNER_MID:
-                if (timer.seconds() > 0.5) {
+                if (timer.seconds() > 0.75) {
                     spinner.setPosition(positions[nextShootPos]);
                     nextShootPos++;
                     timer.reset();
@@ -85,7 +85,7 @@ public class Shooter {
 
             case PUSHER_DOWN:
                 pusher.setPosition(PUSHER_DOWN);
-                if (timer.seconds() > 0.8) {
+                if (timer.seconds() > 0.9) {
                     timer.reset();
                     state = State.SPINNER_FULL;
                 }
@@ -93,7 +93,7 @@ public class Shooter {
 
             case SPINNER_FULL:
                 spinner.setPosition(positions[nextShootPos]);
-                if (timer.seconds() > 0.5) {
+                if (timer.seconds() > 0.1) {
                     timer.reset();
                     if (nextShootPos >= startShootPos + 6) {
                         state = State.NO_BALLS;
@@ -115,19 +115,53 @@ public class Shooter {
         }
     }
 
-    public void setStartIndexFromOrder(int desiredOrder, int greenBallPos) {
+    public void setStartIndexFromOrder(int desiredOrder, int greenBallPos, double latestServoPos) {
+        int trueBallPos = 1;
+        if (latestServoPos == positions[0]) {
+            if (greenBallPos == 1) {
+                trueBallPos = 1;
+            }else if (greenBallPos == 2) {
+                trueBallPos = 2;
+            }else if (greenBallPos == 3) {
+                trueBallPos = 3;
+            }else {
+                trueBallPos = 1;
+            }
+        }else if (latestServoPos == positions[2]) {
+            if (greenBallPos == 1) {
+                trueBallPos = 3;
+            }else if (greenBallPos == 2) {
+                trueBallPos = 1;
+            }else if (greenBallPos == 3) {
+                trueBallPos = 2;
+            }else {
+                trueBallPos = 1;
+            }
+        }else if (latestServoPos == positions[4]) {
+            if (greenBallPos == 1) {
+                trueBallPos = 2;
+            }else if (greenBallPos == 2) {
+                trueBallPos = 3;
+            }else if (greenBallPos == 3) {
+                trueBallPos = 1;
+            }else {
+                trueBallPos = 1;
+            }
+        }else {
 
-        if (desiredOrder == 1 && greenBallPos == 1) startShootPos = 0;
-        else if (desiredOrder == 1 && greenBallPos == 2) startShootPos = 4;
-        else if (desiredOrder == 1 && greenBallPos == 3) startShootPos = 2;
+        }
+        if (desiredOrder == 67) startShootPos = 0;
+        else if (desiredOrder == 1 && trueBallPos == 1) startShootPos = 0;
+        else if (desiredOrder == 1 && trueBallPos == 2) startShootPos = 4;
+        else if (desiredOrder == 1 && trueBallPos == 3) startShootPos = 2;
 
-        else if (desiredOrder == 2 && greenBallPos == 1) startShootPos = 4;
-        else if (desiredOrder == 2 && greenBallPos == 2) startShootPos = 2;
-        else if (desiredOrder == 2 && greenBallPos == 3) startShootPos = 0;
+        else if (desiredOrder == 2 && trueBallPos == 1) startShootPos = 4;
+        else if (desiredOrder == 2 && trueBallPos == 2) startShootPos = 2;
+        else if (desiredOrder == 2 && trueBallPos == 3) startShootPos = 0;
 
-        else if (desiredOrder == 3 && greenBallPos == 1) startShootPos = 2;
-        else if (desiredOrder == 3 && greenBallPos == 2) startShootPos = 0;
-        else if (desiredOrder == 3 && greenBallPos == 3) startShootPos = 4;
+        else if (desiredOrder == 3 && trueBallPos == 1) startShootPos = 2;
+        else if (desiredOrder == 3 && trueBallPos == 2) startShootPos = 0;
+        else if (desiredOrder == 3 && trueBallPos == 3) startShootPos = 4;
 
         nextShootPos = startShootPos;
     }
@@ -144,5 +178,9 @@ public class Shooter {
     public void forceReady() {
         state = State.READY;
         timer.reset();
+    }
+
+    public void goToNextPosition() {
+        spinner.setPosition(positions[nextShootPos]);
     }
 }
