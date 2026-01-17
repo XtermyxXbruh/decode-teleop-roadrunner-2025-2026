@@ -7,6 +7,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.teamcode.colorSensorDecode;
 import org.firstinspires.ftc.teamcode.IntakeSubsystem;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 
 @TeleOp(name = "NewClassTest", group = "Drive")
@@ -32,13 +33,12 @@ public class chatty extends OpMode {
     // SPINNER POSITIONS
     // =====================
     final double[] POSITION_LIST = {
-            0.985, 0.942,
-            0.85,  0.779,
-            0.6955,  0.63,
-            0.55,  0.485,
-            0.4,  0.322,
-            0.2467,0.17,
-            0.1,   0.2,
+            0.878,
+            0.727,
+            0.5855,
+            0.433,
+            0.26,
+            0.13,
             0
     };
 
@@ -68,6 +68,11 @@ public class chatty extends OpMode {
 
     //camera
     private CameraSubsystem camera;
+
+    private double PUSHER_UP = 0.567;
+    private double PUSHER_DOWN = 0.27167;
+
+    ElapsedTime shootingAccelTimer = new ElapsedTime();
     @Override
     public void init() {
 
@@ -114,6 +119,7 @@ public class chatty extends OpMode {
         //camera
         camera = new CameraSubsystem();
         camera.init(hardwareMap);
+        camera.setMode(CameraSubsystem.Mode.TELEOP);
 
         // Color sensors
         colorBench = new colorSensorDecode();
@@ -188,10 +194,10 @@ public class chatty extends OpMode {
 
         if (gamepad2.left_trigger > 0.2) {
             returnTurretHome();
-        } else if (camera.hasTarget()) {
-            double bearing = camera.getBearing();
+        } else if (camera.hasAimTarget()) {
+            double bearing = camera.getAimBearing();
 
-            double kP = 1.0 / 300;
+            double kP = 1.0 / 270;
             double desired = turretPos + bearing * kP;
             desired = Math.max(0.0, Math.min(1.0, desired));
             turretPos += (desired - turretPos) * 0.25;
@@ -204,20 +210,23 @@ public class chatty extends OpMode {
 
         //TODO: ALL THE BUUUUTOOOOONS
         if (overrideShoot) {
-            shooter.setStartIndexFromOrder(BALL_DESIRED_ORDER,GREEN_BALL_POS,spinner.getPosition());
+            shooter.setStartIndexFromOrder(BALL_DESIRED_ORDER,GREEN_BALL_POS,POSITION_LIST[0]);
             intakeSubsystem.forceChambersFull();
-            shooter.goToNextPosition();
             shooter.forceReady();
         }
 
         if (gamepad1.dpad_up) {
-            SHOOTER_TICK_SPEED = 1367;
+            SHOOTER_TICK_SPEED = 1415;
         }
         if (gamepad1.dpad_down) {
             SHOOTER_TICK_SPEED = 967;
         }
-        if (gamepad1.dpad_right || gamepad2.dpad_left) {
+        if (gamepad1.dpad_right) {
             SHOOTER_TICK_SPEED = 1200;
+        }
+        if (gamepad1.dpad_left) {
+            SHOOTER_TICK_SPEED = 210;
+
         }
 
 
@@ -225,10 +234,10 @@ public class chatty extends OpMode {
             TURRET_HOME = 0.5;
         }
         if (gamepad2.dpad_left) {
-            TURRET_HOME = 0.62;
+            TURRET_HOME = 0.605;
         }
         if (gamepad2.dpad_right) {
-            TURRET_HOME = 0.38;
+            TURRET_HOME = 0.395;
         }
 
         // --------------------
@@ -257,9 +266,9 @@ public class chatty extends OpMode {
         else if (c3 == colorSensorDecode.DetectedColor.GREEN) GREEN_BALL_POS = 3;
 
         if (gamepad2.left_bumper) {
-            BALL_DESIRED_ORDER = 67;
+            shooter.cancelShoot();
         }
-        else if (gamepad2.a) BALL_DESIRED_ORDER = 1;
+        else if (gamepad2.a) BALL_DESIRED_ORDER = 67;
         else if (gamepad2.b) BALL_DESIRED_ORDER = 2;
         else if (gamepad2.x) BALL_DESIRED_ORDER = 3;
 
@@ -267,7 +276,7 @@ public class chatty extends OpMode {
             shooter.setStartIndexFromOrder(
                     BALL_DESIRED_ORDER,
                     GREEN_BALL_POS,
-                    spinner.getPosition()
+                    POSITION_LIST[0]
             );
         }
 // --------------------
@@ -303,8 +312,9 @@ public class chatty extends OpMode {
 
 
         if (!shooter.isIdle()) {
-            shoot1.setVelocity(SHOOTER_TICK_SPEED);
-            shoot2.setVelocity(SHOOTER_TICK_SPEED);
+            double REAL_SHOOT_SPEED = SHOOTER_TICK_SPEED/(1+Math.pow(2, -2.67 * shootingAccelTimer.seconds()));
+            shoot1.setVelocity(REAL_SHOOT_SPEED);
+            shoot2.setVelocity(REAL_SHOOT_SPEED);
         } else {
             shoot1.setVelocity(0);
             shoot2.setVelocity(0);
@@ -321,6 +331,9 @@ public class chatty extends OpMode {
         telemetry.addData("pusherPos", pusher.getPosition());
         telemetry.addData("spinnerPos", spinner.getPosition());
         telemetry.update();
+    }
+    public void smoothingTurretAccel() {
+        shootingAccelTimer.reset();
     }
 
     private void returnTurretHome() {

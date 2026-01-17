@@ -16,7 +16,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 
 @Autonomous(name = "R-CLOSE-6b-0s", group = "Autonomous")
 public class red_close_six_zero extends LinearOpMode {
-    double INTAKE_CREEP_SPEED = 0.15;
+    double INTAKE_CREEP_SPEED = 0.125;
 
     private IntakeSubsystem intakeSubsystem;
     private colorSensorDecode colorBench;
@@ -27,11 +27,10 @@ public class red_close_six_zero extends LinearOpMode {
     private DcMotorEx shoot1, shoot2;
     private Servo spinner, pusher, turret1, turret2;
 
-    private double PUSHER_UP = 0.4;
-    private double PUSHER_DOWN = 0.06;
+    private double PUSHER_UP = 0.567;
+    private double PUSHER_DOWN = 0.27167;
 
     int DESIRED_ORDER = 1;
-    int GREEN_BALL_POS = 1;
 
     private CameraSubsystem camera;
     @Override
@@ -44,11 +43,11 @@ public class red_close_six_zero extends LinearOpMode {
         // POS LIST
         // --------
         final double[] POSITION_LIST = {
-                0.986, 0.945,
-                0.855,  0.781,
-                0.7,  0.633,
-                0.54,  0.485,
-                0.4,  0.322,
+                0.9831, 0.946,
+                0.858,  0.792,
+                0.718,  0.636,
+                0.55,  0.48,
+                0.41,  0.32,
                 0.2467,0.17,
                 0.1,   0.2,
                 0
@@ -81,20 +80,7 @@ public class red_close_six_zero extends LinearOpMode {
 
         camera = new CameraSubsystem();
         camera.init(hardwareMap);
-
-        DESIRED_ORDER = camera.getDesiredOrderFromTag();
-
-        if (c4 == colorSensorDecode.DetectedColor.GREEN){
-            GREEN_BALL_POS = 1;
-        }
-
-        if (c2 == colorSensorDecode.DetectedColor.GREEN) {
-            GREEN_BALL_POS = 2;
-        }
-
-        if (c3 == colorSensorDecode.DetectedColor.GREEN) {
-            GREEN_BALL_POS = 3;
-        }
+        camera.setMode(CameraSubsystem.Mode.AUTO);
 
         DcMotor intake = hardwareMap.get(DcMotor.class, "intake");
 
@@ -105,10 +91,8 @@ public class red_close_six_zero extends LinearOpMode {
                 pusher,
                 POSITION_LIST
         );
-        //TODO: FUCKING CHANGE THE 67's
-        shooter.setStartIndexFromOrder(DESIRED_ORDER,GREEN_BALL_POS,spinner.getPosition());
-        shooter.forceReady();
-        shooter.update(false, false);
+
+
 
         Action trajectory1 = drive.actionBuilder(initialPose)
                 .setTangent(0)
@@ -117,34 +101,43 @@ public class red_close_six_zero extends LinearOpMode {
 
         Action trajectory2 = drive.actionBuilder(new Pose2d(-10,9,Math.toRadians(90)))
                 .setTangent(Math.toRadians(90))
-                .splineToConstantHeading(new Vector2d(-12,33),Math.toRadians(90))
+                .splineToConstantHeading(new Vector2d(-12,32.5),Math.toRadians(90))
                 .build();
 
-        Action trajectory3 = drive.actionBuilder(new Pose2d(-12,33,Math.toRadians(90)))
+        Action trajectory3 = drive.actionBuilder(new Pose2d(-12,32.5,Math.toRadians(90)))
                 .setTangent(Math.toRadians(270))
                 .splineToConstantHeading(new Vector2d(-10,9),Math.toRadians(270))
                 .build();
 
-        telemetry.addData("des pos", DESIRED_ORDER);
-        telemetry.update();
-
 
         waitForStart();
         if (isStopRequested()) return;
-        if (c4 == colorSensorDecode.DetectedColor.GREEN){
-            GREEN_BALL_POS = 1;
+
+
+        ElapsedTime scanTimer = new ElapsedTime();
+        scanTimer.reset();
+
+        while (opModeIsActive() && scanTimer.seconds() < 2.0) {
+            camera.update();
+            if (camera.hasOrderTarget()) {
+                DESIRED_ORDER = camera.getDesiredOrderFromTag();
+            }
+            telemetry.addData("Scanning AprilTag...", scanTimer.seconds());
+            telemetry.addData("Detected Order", DESIRED_ORDER);
+            telemetry.update();
+
+            sleep(20);
         }
 
-        if (c2 == colorSensorDecode.DetectedColor.GREEN) {
-            GREEN_BALL_POS = 2;
-        }
+        int FINAL_ORDER = DESIRED_ORDER;
 
-        if (c3 == colorSensorDecode.DetectedColor.GREEN) {
-            GREEN_BALL_POS = 3;
-        }
+
+        shooter.forceReady();
+        shooter.update(false, false);
         //TODO: FUCKING CHANGE THE 67's
-        shooter.setStartIndexFromOrder(DESIRED_ORDER,GREEN_BALL_POS,spinner.getPosition());
+        shooter.setStartIndexFromOrder(FINAL_ORDER,1,POSITION_LIST[0]);
         shooter.goToNextPosition();
+
 
 // --------------------
 // SHOOT PRELOAD BALLS
@@ -184,7 +177,7 @@ public class red_close_six_zero extends LinearOpMode {
 
         //GO TO INTAKE LOCATION
         intakeSubsystem.forceIntakeReady();
-        shooter.goToNextPosition();
+        spinner.setPosition(POSITION_LIST[0]);
         Actions.runBlocking(trajectory2);
 
         // --------------------
@@ -201,7 +194,7 @@ public class red_close_six_zero extends LinearOpMode {
         creepTimer.reset();
 
         while (opModeIsActive()
-                && creepTimer.seconds() < 4) {
+                && creepTimer.seconds() < 5) {
 
             // Drive forward
             drive.setDrivePowers(
@@ -258,9 +251,8 @@ public class red_close_six_zero extends LinearOpMode {
         //go back to shooting place
         Actions.runBlocking(trajectory3);
         intakeSubsystem.stopIntake();
-        spinner.setPosition(POSITION_LIST[0]);
         //TODO: FUCKING CHANGE THE 67's
-        shooter.setStartIndexFromOrder(67, 67,spinner.getPosition()); // or real detected order
+        shooter.setStartIndexFromOrder(FINAL_ORDER, 3,POSITION_LIST[0]); // or real detected order
         shooter.forceReady();
         shooter.update(false, true);
 
@@ -279,7 +271,7 @@ public class red_close_six_zero extends LinearOpMode {
 // Keep shooting until shooter FSM says NO_BALLS
         while (opModeIsActive()
                 && shooter.getState() != Shooter.State.NO_BALLS
-                && shootTimer.seconds() <= 12) {
+                && shootTimer.seconds() <= 13) {
             boolean allowShoot = shootTimer.seconds() >= 1.5;
             shooter.update(
                     allowShoot,   // shootPressed = true
@@ -296,5 +288,9 @@ public class red_close_six_zero extends LinearOpMode {
         shoot2.setVelocity(0);
 
         Actions.runBlocking(trajectory2);
+        pusher.setPosition(PUSHER_DOWN);
+        spinner.setPosition(POSITION_LIST[0]);
     }
 }
+
+

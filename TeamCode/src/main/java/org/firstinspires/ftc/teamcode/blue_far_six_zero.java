@@ -16,7 +16,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 
 @Autonomous(name = "B-FAR-6b-0s", group = "Autonomous")
 public class blue_far_six_zero extends LinearOpMode {
-    double INTAKE_CREEP_SPEED = 0.15;
+    double INTAKE_CREEP_SPEED = 0.125;
 
     private IntakeSubsystem intakeSubsystem;
     private colorSensorDecode colorBench;
@@ -27,10 +27,10 @@ public class blue_far_six_zero extends LinearOpMode {
     private DcMotorEx shoot1, shoot2;
     private Servo spinner, pusher, turret1, turret2;
 
-    private double PUSHER_UP = 0.4;
-    private double PUSHER_DOWN = 0.06;
+    private double PUSHER_UP = 0.567;
+    private double PUSHER_DOWN = 0.27167;
 
-    private double SHOOTER_TICK_SPEED = 1426.7;
+    private double SHOOTER_TICK_SPEED = 1430;
 
 
     @Override
@@ -43,11 +43,11 @@ public class blue_far_six_zero extends LinearOpMode {
         // POS LIST
         // --------
         final double[] POSITION_LIST = {
-                0.986, 0.945,
-                0.855,  0.781,
-                0.7,  0.633,
-                0.54,  0.485,
-                0.4,  0.322,
+                0.9831, 0.946,
+                0.858,  0.792,
+                0.718,  0.636,
+                0.55,  0.48,
+                0.41,  0.32,
                 0.2467,0.17,
                 0.1,   0.2,
                 0
@@ -94,10 +94,10 @@ public class blue_far_six_zero extends LinearOpMode {
 
         Action trajectory1 = drive.actionBuilder(initialPose)
                 .setTangent(Math.toRadians(180))
-                .splineToConstantHeading(new Vector2d(36,-33),Math.toRadians(270))
+                .splineToConstantHeading(new Vector2d(36,-32.5),Math.toRadians(270))
                 .build();
 
-        Action trajectory2 = drive.actionBuilder(new Pose2d(36,-33,Math.toRadians(270)))
+        Action trajectory2 = drive.actionBuilder(new Pose2d(36,-32.5,Math.toRadians(270)))
                 .setTangent(Math.toRadians(90))
                 .splineToConstantHeading(new Vector2d(63,-9),Math.toRadians(0))
                 .build();
@@ -125,8 +125,8 @@ public class blue_far_six_zero extends LinearOpMode {
 // Keep shooting until shooter FSM says NO_BALLS
         while (opModeIsActive()
                 && shooter.getState() != Shooter.State.NO_BALLS
-                && shootTimer.seconds() <= 13.5) {
-            boolean allowShoot = shootTimer.seconds() >= 1.5;
+                && shootTimer.seconds() <= 14) {
+            boolean allowShoot = shootTimer.seconds() >= 2;
             shooter.update(
                     allowShoot,   // shootPressed = true
                     true    // intakeFull = true (we started with balls)
@@ -160,7 +160,7 @@ public class blue_far_six_zero extends LinearOpMode {
         creepTimer.reset();
 
         while (opModeIsActive()
-                && creepTimer.seconds() < 4) {
+                && creepTimer.seconds() < 5) {
 
             // Drive forward
             drive.setDrivePowers(
@@ -256,5 +256,7 @@ public class blue_far_six_zero extends LinearOpMode {
         shoot2.setVelocity(0);
 
         Actions.runBlocking(trajectory1);
+        pusher.setPosition(PUSHER_DOWN);
+        spinner.setPosition(POSITION_LIST[0]);
     }
 }

@@ -56,10 +56,10 @@ public class IntakeSubsystem {
                 break;
 
             case READY:
-                if (intakeTimer.seconds() >= 0.25 && (c4 == colorSensorDecode.DetectedColor.GREEN ||
+                if (intakeTimer.seconds() >= 0.2 && (c4 == colorSensorDecode.DetectedColor.GREEN ||
                         c4 == colorSensorDecode.DetectedColor.PURPLE)) {
 
-                    nextSpinnerIndex += 2;
+                    nextSpinnerIndex++;
                     intakeTimer.reset();
                     intakeState = IntakeState.INTAKE_DETECT;
                 }
@@ -73,7 +73,7 @@ public class IntakeSubsystem {
 
             case WAIT_FOR_READY:
                 if (intakeTimer.seconds() >= 0.5) {
-                    if (nextSpinnerIndex >= 6) {
+                    if (nextSpinnerIndex >= 3) {
                         intakeState = IntakeState.CHAMBERS_FULL;
                     } else {
                         intakeState = IntakeState.READY;

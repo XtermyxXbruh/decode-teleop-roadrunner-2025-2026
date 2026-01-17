@@ -13,9 +13,8 @@ import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 
-
-@Autonomous(name = "B-CLOSE-6b-0s", group = "Autonomous")
-public class blue_close_six_zero extends LinearOpMode {
+@Autonomous(name = "pathTesting", group = "Autonomous")
+public class pathTesting extends LinearOpMode {
     double INTAKE_CREEP_SPEED = 0.125;
 
     private IntakeSubsystem intakeSubsystem;
@@ -33,23 +32,22 @@ public class blue_close_six_zero extends LinearOpMode {
     int DESIRED_ORDER = 1;
 
     private CameraSubsystem camera;
+
     @Override
     public void runOpMode() {
-
-        Pose2d initialPose = new Pose2d(-63, -9, Math.toRadians(270));
+        Pose2d initialPose = new Pose2d(-50.75,50.25,Math.toRadians(270));
         MecanumDrive drive = new MecanumDrive(hardwareMap, initialPose);
 
         // --------
         // POS LIST
         // --------
         final double[] POSITION_LIST = {
-                0.9831, 0.946,
-                0.858,  0.792,
-                0.718,  0.636,
-                0.55,  0.48,
-                0.41,  0.32,
-                0.2467,0.17,
-                0.1,   0.2,
+                0.878,
+                0.727,
+                0.5855,
+                0.433,
+                0.26,
+                0.13,
                 0
         };
 
@@ -93,20 +91,19 @@ public class blue_close_six_zero extends LinearOpMode {
         );
 
         Action trajectory1 = drive.actionBuilder(initialPose)
-                .setTangent(0)
-                .splineToConstantHeading(new Vector2d(-10,-9),0)
-                .build();
-
-        Action trajectory2 = drive.actionBuilder(new Pose2d(-10,-9,Math.toRadians(270)))
                 .setTangent(Math.toRadians(270))
-                .splineToConstantHeading(new Vector2d(-12,-32.5),Math.toRadians(270))
+                .splineToLinearHeading(new Pose2d(-20, 19, Math.toRadians(90)), Math.toRadians(0))
                 .build();
 
-        Action trajectory3 = drive.actionBuilder(new Pose2d(-12,-32.5,Math.toRadians(270)))
+        Action trajectory2 = drive.actionBuilder(new Pose2d(-20,19,Math.toRadians(0)))
                 .setTangent(Math.toRadians(90))
-                .splineToConstantHeading(new Vector2d(-10,-9),Math.toRadians(90))
+                .splineToConstantHeading(new Vector2d(-12,32.5),Math.toRadians(90))
                 .build();
 
+        Action trajectory3 = drive.actionBuilder(new Pose2d(-12,36,Math.toRadians(90)))
+                .setTangent(Math.toRadians(270))
+                .splineToConstantHeading(new Vector2d(-10,9),Math.toRadians(270))
+                .build();
 
 
         waitForStart();
@@ -136,27 +133,31 @@ public class blue_close_six_zero extends LinearOpMode {
         //TODO: FUCKING CHANGE THE 67's
         shooter.setStartIndexFromOrder(FINAL_ORDER,1,POSITION_LIST[0]);
 
+        turret1.setPosition(0.69);
+        turret2.setPosition(0.69);
+
+
 // --------------------
 // SHOOT PRELOAD BALLS
 // --------------------
-        ElapsedTime shootTimer = new ElapsedTime();
-        shootTimer.reset();
+
 
 // Spin shooter wheels
         shoot1.setVelocity(1200);
         shoot2.setVelocity(1200);
 
-        spinner.setPosition(POSITION_LIST[0]);
+        shooter.goToNextPosition();
 
         //GO TO SHOOTING LOCATION
         Actions.runBlocking(trajectory1);
-        turret1.setPosition(0.31);
-        turret2.setPosition(0.31);
+
+        ElapsedTime shootTimer = new ElapsedTime();
+        shootTimer.reset();
 
 // Keep shooting until shooter FSM says NO_BALLS
         while (opModeIsActive()
                 && shooter.getState() != Shooter.State.NO_BALLS
-                && shootTimer.seconds() <= 11) {
+                && shootTimer.seconds() <= 5) {
 
             shooter.update(
                     true,   // shootPressed = true
@@ -250,26 +251,29 @@ public class blue_close_six_zero extends LinearOpMode {
         intakeSubsystem.stopIntake();
         spinner.setPosition(POSITION_LIST[0]);
         //TODO: FUCKING CHANGE THE 67's
-        shooter.setStartIndexFromOrder(67, 67,spinner.getPosition()); // or real detected order
+        shooter.setStartIndexFromOrder(FINAL_ORDER, 3,POSITION_LIST[0]); // or real detected order
         shooter.forceReady();
         shooter.update(false, true);
 
         shootTimer.reset();
 
 // Spin shooter wheels
-        shoot1.setVelocity(1200);
-        shoot2.setVelocity(1200);
-
+//        shoot1.setVelocity(1200);
+//        shoot2.setVelocity(1200);
+        shoot1.setVelocity(1150);
+        shoot2.setVelocity(1150);
 
 
         //GO TO SHOOTING LOCATION
-        turret1.setPosition(0.31);
-        turret2.setPosition(0.31);
+        //turret1.setPosition(0.69);
+//        turret2.setPosition(0.69);
+        turret1.setPosition(0.69);
+        turret2.setPosition(0.69);
 
 // Keep shooting until shooter FSM says NO_BALLS
         while (opModeIsActive()
                 && shooter.getState() != Shooter.State.NO_BALLS
-                && shootTimer.seconds() <= 12) {
+                && shootTimer.seconds() <= 6.7) {
             boolean allowShoot = shootTimer.seconds() >= 1.5;
             shooter.update(
                     allowShoot,   // shootPressed = true
@@ -288,5 +292,13 @@ public class blue_close_six_zero extends LinearOpMode {
         Actions.runBlocking(trajectory2);
         pusher.setPosition(PUSHER_DOWN);
         spinner.setPosition(POSITION_LIST[0]);
+
+
+
+        waitForStart();
+        if (isStopRequested()) return;
+
+        Actions.runBlocking(trajectory1);
+
     }
 }

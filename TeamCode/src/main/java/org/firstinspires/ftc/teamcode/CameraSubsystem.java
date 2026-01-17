@@ -10,10 +10,18 @@ import java.util.List;
 
 public class CameraSubsystem {
 
+    public enum Mode {
+        AUTO,
+        TELEOP
+    }
+
     private VisionPortal visionPortal;
     private AprilTagProcessor aprilTag;
 
-    private AprilTagDetection currentTarget;
+    private AprilTagDetection aimTarget;    // 20 / 24
+    private AprilTagDetection orderTarget;  // 21 / 22 / 23
+
+    private Mode mode = Mode.TELEOP;
 
     // =====================
     // INIT
@@ -28,10 +36,18 @@ public class CameraSubsystem {
     }
 
     // =====================
+    // MODE SET
+    // =====================
+    public void setMode(Mode mode) {
+        this.mode = mode;
+    }
+
+    // =====================
     // UPDATE (call every loop)
     // =====================
     public void update() {
-        currentTarget = null;
+        aimTarget = null;
+        orderTarget = null;
 
         if (aprilTag == null) return;
 
@@ -39,37 +55,48 @@ public class CameraSubsystem {
         if (detections.isEmpty()) return;
 
         for (AprilTagDetection tag : detections) {
-            // Only care about scoring tags
-            if (tag.id == 24 || tag.id == 20) {
-                if (tag.ftcPose != null) {
-                    currentTarget = tag;
-                    return;
-                }
+            if (tag.ftcPose == null) continue;
+
+            // Aiming tags (always allowed)
+            if (tag.id == 20 || tag.id == 24) {
+                aimTarget = tag;
+            }
+
+            // Desired order tags (AUTO ONLY)
+            if (mode == Mode.AUTO && tag.id >= 21 && tag.id <= 23) {
+                orderTarget = tag;
             }
         }
     }
 
     // =====================
-    // GETTERS
+    // AIMING GETTERS
     // =====================
-    public boolean hasTarget() {
-        return currentTarget != null;
+    public boolean hasAimTarget() {
+        return aimTarget != null;
     }
 
-    public double getBearing() {
-        if (currentTarget == null) return 0.0;
-        return currentTarget.ftcPose.bearing;
+    public double getAimBearing() {
+        if (aimTarget == null) return 0.0;
+        return aimTarget.ftcPose.bearing;
     }
 
-    public int getTargetId() {
-        if (currentTarget == null) return -1;
-        return currentTarget.id;
+    public int getAimTargetId() {
+        if (aimTarget == null) return -1;
+        return aimTarget.id;
+    }
+
+    // =====================
+    // AUTO ONLY — ORDER
+    // =====================
+    public boolean hasOrderTarget() {
+        return orderTarget != null;
     }
 
     public int getDesiredOrderFromTag() {
-        if (currentTarget == null) return 1; // default safe order
+        if (orderTarget == null) return 1; // safe default
 
-        switch (currentTarget.id) {
+        switch (orderTarget.id) {
             case 21: return 1;
             case 22: return 2;
             case 23: return 3;

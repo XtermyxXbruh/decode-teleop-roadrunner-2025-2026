@@ -22,6 +22,7 @@ public class ManualTests extends OpMode {
     // =====================
 // TURRET SERVOS
 // =====================
+    ElapsedTime randommanual = new ElapsedTime();
     private Servo turret1, turret2;
     private double turretPos = 0.38;
 
@@ -72,22 +73,15 @@ public class ManualTests extends OpMode {
     final double SPIN_POS_MID_7 = 0.2;
 
 
-    double[] POSITION_LIST = {
-            SPIN_POS_1,
-            SPIN_POS_MID_1,
-            SPIN_POS_2,
-            SPIN_POS_MID_2,
-            SPIN_POS_3,
-            SPIN_POS_MID_3,
-            SPIN_POS_4,
-            SPIN_POS_MID_4,
-            SPIN_POS_5,
-            SPIN_POS_MID_5,
-            SPIN_POS_6,
-            SPIN_POS_MID_6,
-            SPIN_POS_7,
-            SPIN_POS_MID_7,
-            SPIN_POS_8
+    final double[] POSITION_LIST = {
+            0.985, 0.938,
+            0.86,  0.778,
+            0.7,  0.62,
+            0.55,  0.48,
+            0.41,  0.324,
+            0.23,0.17,
+            0.1,   0.2,
+            0
     };
 
     int MANUAL_CONTROL_NEXT_POS = 0;
@@ -263,10 +257,15 @@ public class ManualTests extends OpMode {
             intake.setPower(0);
         }
         spinnerBefore = spinner.getPosition();
-        pusher.setPosition(gamepad1.left_trigger >= 0.4 ? 0.5 : 0.06);
+        pusher.setPosition(gamepad1.left_trigger >= 0.4 ? 0.5 : 0.04);
 
         // Spinner positions
-        if (gamepad1.right_bumper) spinner.setPosition(Math.max(0.0, Math.min(1.0, (spinner.getPosition() + 0.15))));
+
+        if (randommanual.seconds() >= 3) {
+            randommanual.reset();
+            MANUAL_CONTROL_NEXT_POS++;
+            spinner.setPosition(POSITION_LIST[MANUAL_CONTROL_NEXT_POS]);
+        }
 
         //if (gamepad1.dpad_down) spinner.setPosition(0.9367);
         //if (gamepad1.dpad_right) spinner.setPosition(0.775);
@@ -282,6 +281,8 @@ public class ManualTests extends OpMode {
             spinner.setPosition(SPIN_POS_3);
         }
         //SHOOTA
+        shoot1.setVelocity(350);
+        shoot2.setVelocity(350);
         if (gamepad1.left_bumper) {
             shoot1.setVelocity(SHOOTER_TICK_SPEED);
             shoot2.setVelocity(SHOOTER_TICK_SPEED);
