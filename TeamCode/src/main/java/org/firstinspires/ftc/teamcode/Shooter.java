@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -23,13 +24,26 @@ public class Shooter {
     private final ElapsedTime timer = new ElapsedTime();
 
     private final double[] positions;
-    private final double PUSHER_UP;
-    private final double PUSHER_DOWN;
+
+    private static final double PUSHER_UP = 0.55;
+    private static final double PUSHER_DOWN = 0.25;
 
     private int startShootPos = 0;
     private int nextShootPos = 0;
 
-    // ✅ THIS CONSTRUCTOR HAS **5 ARGUMENTS**
+    private double waitTime = 0;
+
+    // Shooter wheel control
+    private double targetVelocity = 0;
+    private boolean spinning = false;
+
+    // PIDF defaults
+    private static final double DEFAULT_KP = 1.0;
+    private static final double DEFAULT_KF = 15.5;
+
+    // =====================
+    // CONSTRUCTOR
+    // =====================
     public Shooter(
             DcMotorEx shooter1,
             DcMotorEx shooter2,
@@ -43,16 +57,40 @@ public class Shooter {
         this.pusher = pusher;
         this.positions = positions;
 
-        this.PUSHER_UP = 0.567;
-        this.PUSHER_DOWN = 0.27167;
+        // Motor configuration (LEGAL HERE)
+        shooter1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        shooter2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        shooter1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+        shooter2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+
+        shooter1.setDirection(DcMotor.Direction.REVERSE);
+        shooter2.setDirection(DcMotor.Direction.REVERSE);
+
+        shooter1.setVelocityPIDFCoefficients(DEFAULT_KP, 0, 0, DEFAULT_KF);
+        shooter2.setVelocityPIDFCoefficients(DEFAULT_KP, 0, 0, DEFAULT_KF);
     }
 
-    public void setStartShootPos(int pos) {
-        startShootPos = pos;
-        nextShootPos = pos;
-    }
-
+    // =====================
+    // MAIN UPDATE (CALL EVERY LOOP)
+    // =====================
     public void update(boolean shootPressed, boolean intakeFull) {
+
+        // Wheel control
+        if (spinning) {
+            double error = targetVelocity - shooter1.getVelocity();
+            if (error > 42) {
+                shooter1.setVelocity(targetVelocity+250);
+                shooter2.setVelocity(targetVelocity+250);
+            }else {
+                shooter1.setVelocity(targetVelocity);
+                shooter2.setVelocity(targetVelocity);
+            }
+
+        } else {
+            shooter1.setVelocity(0);
+            shooter2.setVelocity(0);
+        }
 
         switch (state) {
             case READY:
@@ -66,8 +104,7 @@ public class Shooter {
                 break;
 
             case PUSHER_UP:
-                spinner.setPosition(positions[nextShootPos]);
-                if (timer.seconds() > 0.05) {
+                if (timer.seconds() > 0.1 + waitTime) {
                     pusher.setPosition(PUSHER_UP);
                     nextShootPos++;
                     timer.reset();
@@ -76,8 +113,7 @@ public class Shooter {
                 break;
 
             case WAIT_FOR_SPIN:
-                pusher.setPosition(PUSHER_UP);
-                if (timer.seconds() > 0.3) {
+                if (timer.seconds() > 0.45 + waitTime) {
                     timer.reset();
                     state = State.PUSHER_DOWN;
                 }
@@ -85,7 +121,7 @@ public class Shooter {
 
             case PUSHER_DOWN:
                 pusher.setPosition(PUSHER_DOWN);
-                if (timer.seconds() > 0.4) {
+                if (timer.seconds() > 0.5 + waitTime) {
                     timer.reset();
                     state = State.SPINNER_FULL;
                 }
@@ -93,7 +129,7 @@ public class Shooter {
 
             case SPINNER_FULL:
                 spinner.setPosition(positions[nextShootPos]);
-                if (timer.seconds() > 0.2) {
+                if (timer.seconds() > 0.25 + waitTime) {
                     timer.reset();
                     if (nextShootPos >= startShootPos + 3) {
                         state = State.NO_BALLS;
@@ -102,6 +138,7 @@ public class Shooter {
                     }
                 }
                 break;
+
             case ABORT:
                 pusher.setPosition(PUSHER_DOWN);
                 if (timer.seconds() > 1) {
@@ -109,75 +146,31 @@ public class Shooter {
                     nextShootPos = startShootPos;
                     state = State.NO_BALLS;
                 }
+                break;
+
             case NO_BALLS:
-                if (timer.seconds() >= 0.25) {
-                    nextShootPos = startShootPos;
-                    pusher.setPosition(PUSHER_DOWN);
-                    if (intakeFull) {
-                        state = State.READY;
-                    }
+                pusher.setPosition(PUSHER_DOWN);
+                if (intakeFull) {
+                    state = State.READY;
                 }
                 break;
         }
     }
 
-
-    public void setStartIndexFromOrder(int desiredOrder, int greenBallPos, double latestServoPos) {
-        int trueBallPos = 1;
-        if (latestServoPos == positions[0]) {
-            if (greenBallPos == 1) {
-                trueBallPos = 1;
-            }else if (greenBallPos == 2) {
-                trueBallPos = 2;
-            }else if (greenBallPos == 3) {
-                trueBallPos = 3;
-            }else {
-                trueBallPos = 1;
-            }
-        }else if (latestServoPos == positions[2]) {
-            if (greenBallPos == 1) {
-                trueBallPos = 3;
-            }else if (greenBallPos == 2) {
-                trueBallPos = 1;
-            }else if (greenBallPos == 3) {
-                trueBallPos = 2;
-            }else {
-                trueBallPos = 1;
-            }
-        }else if (latestServoPos == positions[4]) {
-            if (greenBallPos == 1) {
-                trueBallPos = 2;
-            }else if (greenBallPos == 2) {
-                trueBallPos = 3;
-            }else if (greenBallPos == 3) {
-                trueBallPos = 1;
-            }else {
-                trueBallPos = 1;
-            }
-        }
-        if (desiredOrder == 67) startShootPos = 0;
-        else if (desiredOrder == 1 && trueBallPos == 1) startShootPos = 0;
-        else if (desiredOrder == 1 && trueBallPos == 2) startShootPos = 2;
-        else if (desiredOrder == 1 && trueBallPos == 3) startShootPos = 1;
-
-        else if (desiredOrder == 2 && trueBallPos == 1) startShootPos = 2;
-        else if (desiredOrder == 2 && trueBallPos == 2) startShootPos = 1;
-        else if (desiredOrder == 2 && trueBallPos == 3) startShootPos = 0;
-
-        else if (desiredOrder == 3 && trueBallPos == 1) startShootPos = 1;
-        else if (desiredOrder == 3 && trueBallPos == 2) startShootPos = 0;
-        else if (desiredOrder == 3 && trueBallPos == 3) startShootPos = 2;
-
-        nextShootPos = startShootPos;
+    // =====================
+    // COMMAND API
+    // =====================
+    public void startSpinning(double velocity) {
+        targetVelocity = velocity;
+        spinning = true;
     }
 
-
-    public State getState() {
-        return state;
+    public void stopSpinning() {
+        spinning = false;
     }
 
-    public boolean isIdle() {
-        return state == State.NO_BALLS;
+    public void setTargetVelocity(double velocity) {
+        targetVelocity = velocity;
     }
 
     public void forceReady() {
@@ -185,16 +178,58 @@ public class Shooter {
         timer.reset();
     }
 
+    public boolean isIdle() {
+        return state == State.NO_BALLS;
+    }
+
+    public State getState() {
+        return state;
+    }
+
+    public void setWaitTime(double wait) {
+        waitTime = wait;
+    }
+
+    public void setStartShootPos(int pos) {
+        startShootPos = pos;
+        nextShootPos = pos;
+    }
+
+    public int getNextShootPos() {
+        return nextShootPos;
+    }
+
+    public void cancelShoot() {
+        state = State.ABORT;
+        timer.reset();
+    }
+
     public void goToNextPosition() {
         spinner.setPosition(positions[nextShootPos]);
     }
 
-    public void cancelShoot() {
-        if (state != State.NO_BALLS) {
-            state = State.ABORT;
-            timer.reset();
-        }
+    public void setStartIndexFromOrder(
+            int desiredOrder,
+            int greenBallPos,
+            double latestServoPos
+    ) {
+        int trueBallPos = greenBallPos;
+
+        if (desiredOrder == 67) startShootPos = 0;
+
+        else if (desiredOrder == 1 && trueBallPos == 1) startShootPos = 0;
+        else if (desiredOrder == 1 && trueBallPos == 2) startShootPos = 1;
+        else if (desiredOrder == 1 && trueBallPos == 3) startShootPos = 2;
+
+        else if (desiredOrder == 2 && trueBallPos == 1) startShootPos = 2;
+        else if (desiredOrder == 2 && trueBallPos == 2) startShootPos = 0;
+        else if (desiredOrder == 2 && trueBallPos == 3) startShootPos = 1;
+
+        else if (desiredOrder == 3 && trueBallPos == 1) startShootPos = 1;
+        else if (desiredOrder == 3 && trueBallPos == 2) startShootPos = 2;
+        else if (desiredOrder == 3 && trueBallPos == 3) startShootPos = 0;
+
+        nextShootPos = startShootPos;
     }
 
-    public int getNextShootPos() { return nextShootPos; }
 }

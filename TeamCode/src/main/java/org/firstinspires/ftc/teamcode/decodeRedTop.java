@@ -26,8 +26,8 @@ public class decodeRedTop extends LinearOpMode {
     private DcMotorEx shoot1, shoot2;
     private Servo spinner, pusher, turret1, turret2;
 
-    private double PUSHER_UP = 0.567;
-    private double PUSHER_DOWN = 0.27167;
+    private double PUSHER_UP = 0.55;
+    private double PUSHER_DOWN = 0.23;
 
     int DESIRED_ORDER = 1;
 
@@ -92,17 +92,30 @@ public class decodeRedTop extends LinearOpMode {
 
         Action trajectory1 = drive.actionBuilder(initialPose)
                 .setTangent(Math.toRadians(270))
-                .splineToLinearHeading(new Pose2d(-20, 19, Math.toRadians(90)), Math.toRadians(0))
+                .splineToLinearHeading(
+                        new Pose2d(-25, 25, Math.toRadians(90)),
+                        Math.toRadians(0)
+                )
                 .build();
 
-        Action trajectory2 = drive.actionBuilder(new Pose2d(-20,19,Math.toRadians(0)))
-                .setTangent(Math.toRadians(90))
-                .splineToConstantHeading(new Vector2d(-12,32.5),Math.toRadians(90))
+        Action trajectory2 = drive.actionBuilder(
+                        new Pose2d(-25, 25, Math.toRadians(90))
+                )
+                .setTangent(Math.toRadians(0))
+                .splineToConstantHeading(
+                        new Vector2d(-12, 32.5),
+                        Math.toRadians(90)
+                )
                 .build();
 
-        Action trajectory3 = drive.actionBuilder(new Pose2d(-12,36,Math.toRadians(90)))
+        Action trajectory3 = drive.actionBuilder(
+                        new Pose2d(-12, 32.5, Math.toRadians(90))
+                )
                 .setTangent(Math.toRadians(270))
-                .splineToConstantHeading(new Vector2d(-10,9),Math.toRadians(270))
+                .splineToConstantHeading(
+                        new Vector2d(-25, 25),
+                        Math.toRadians(180)
+                )
                 .build();
 
 

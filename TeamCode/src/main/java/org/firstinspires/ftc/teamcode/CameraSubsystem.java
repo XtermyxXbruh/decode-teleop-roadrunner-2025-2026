@@ -103,4 +103,7 @@ public class CameraSubsystem {
             default: return 1;
         }
     }
+    public double getFPS() {
+        return visionPortal.getFps();
+    }
 }

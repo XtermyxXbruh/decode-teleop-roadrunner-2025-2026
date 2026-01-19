@@ -4,63 +4,82 @@ import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
+import com.acmerobotics.roadrunner.PoseVelocity2d;
+
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.acmerobotics.roadrunner.PoseVelocity2d;
-
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 
-
 @Autonomous(name = "R-FAR-6b-0s", group = "Autonomous")
 public class red_far_six_zero extends LinearOpMode {
-    double INTAKE_CREEP_SPEED = 0.125;
 
+    // --------------------
+    // CONSTANTS
+    // --------------------
+    private static final double INTAKE_CREEP_SPEED = 0.167;
+    private static final double SHOOTER_TICK_SPEED = 1430;
+
+    private static final double PUSHER_DOWN = 0.23;
+
+    // --------------------
+    // SUBSYSTEMS
+    // --------------------
     private IntakeSubsystem intakeSubsystem;
     private colorSensorDecode colorBench;
-
-    private colorSensorDecode.DetectedColor c2, c3, c4;
-
+    private CameraSubsystem camera;
     private Shooter shooter;
+
+    // --------------------
+    // HARDWARE
+    // --------------------
     private DcMotorEx shoot1, shoot2;
     private Servo spinner, pusher, turret1, turret2;
 
-    private double PUSHER_UP = 0.567;
-    private double PUSHER_DOWN = 0.27167;
+    private colorSensorDecode.DetectedColor c2, c3, c4;
 
-    private double SHOOTER_TICK_SPEED = 1430;
+    private int DESIRED_ORDER = 1;
 
-    int DESIRED_ORDER = 1;
-
-    private CameraSubsystem camera;
     @Override
     public void runOpMode() {
 
+        // --------------------
+        // DRIVE SETUP
+        // --------------------
         Pose2d initialPose = new Pose2d(63, 9, Math.toRadians(90));
         MecanumDrive drive = new MecanumDrive(hardwareMap, initialPose);
 
-        // --------
-        // POS LIST
-        // --------
+        // --------------------
+        // SPINNER POSITIONS
+        // --------------------
         final double[] POSITION_LIST = {
-                0.9831, 0.946,
-                0.858,  0.792,
-                0.718,  0.636,
-                0.55,  0.48,
-                0.41,  0.32,
-                0.2467,0.17,
-                0.1,   0.2,
+                0.882,
+                0.7367,
+                0.5885,
+                0.438,
+                0.2732,
+                0.136,
                 0
         };
 
+        // --------------------
+        // INIT SUBSYSTEMS
+        // --------------------
         colorBench = new colorSensorDecode();
         colorBench.init(hardwareMap);
 
         intakeSubsystem = new IntakeSubsystem();
         intakeSubsystem.init(hardwareMap);
 
+        camera = new CameraSubsystem();
+        camera.init(hardwareMap);
+        camera.setMode(CameraSubsystem.Mode.AUTO);
+
+        // --------------------
+        // HARDWARE MAP
+        // --------------------
         turret1 = hardwareMap.get(Servo.class, "turret1");
         turret2 = hardwareMap.get(Servo.class, "turret2");
 
@@ -72,20 +91,9 @@ public class red_far_six_zero extends LinearOpMode {
 
         pusher.setPosition(PUSHER_DOWN);
 
-        shoot1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        shoot2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        shoot1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-        shoot2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-
-        shoot1.setDirection(DcMotor.Direction.REVERSE);
-        shoot2.setDirection(DcMotor.Direction.REVERSE);
-
-        camera = new CameraSubsystem();
-        camera.init(hardwareMap);
-        camera.setMode(CameraSubsystem.Mode.AUTO);
-
-        DcMotor intake = hardwareMap.get(DcMotor.class, "intake");
-
+        // --------------------
+        // SHOOTER FSM
+        // --------------------
         shooter = new Shooter(
                 shoot1,
                 shoot2,
@@ -94,29 +102,43 @@ public class red_far_six_zero extends LinearOpMode {
                 POSITION_LIST
         );
 
+        // --------------------
+        // TRAJECTORIES
+        // --------------------
         Action trajectory1 = drive.actionBuilder(initialPose)
                 .setTangent(Math.toRadians(180))
-                .splineToConstantHeading(new Vector2d(36,32.5),Math.toRadians(90))
+                .splineToConstantHeading(new Vector2d(36, 34), Math.toRadians(90))
                 .build();
 
-        Action trajectory2 = drive.actionBuilder(new Pose2d(36,32.5,Math.toRadians(90)))
+        Action trajectory2 = drive.actionBuilder(new Pose2d(36, 45, Math.toRadians(90)))
                 .setTangent(Math.toRadians(270))
-                .splineToConstantHeading(new Vector2d(63,9),Math.toRadians(0))
+                .splineToConstantHeading(new Vector2d(63, 9), Math.toRadians(0))
                 .build();
 
+        Action trajectory3 = drive.actionBuilder(initialPose)
+                .setTangent(Math.toRadians(180))
+                .splineToConstantHeading(new Vector2d(36, 34), Math.toRadians(90))
+                .build();
 
+        // --------------------
+        // WAIT FOR START
+        // --------------------
         waitForStart();
         if (isStopRequested()) return;
 
+        // --------------------
+        // APRILTAG SCAN
+        // --------------------
         ElapsedTime scanTimer = new ElapsedTime();
         scanTimer.reset();
 
-        while (opModeIsActive() && scanTimer.seconds() < 2.0) {
+        while (opModeIsActive() && scanTimer.seconds() < 2) {
             camera.update();
             if (camera.hasOrderTarget()) {
                 DESIRED_ORDER = camera.getDesiredOrderFromTag();
             }
-            telemetry.addData("Scanning AprilTag...", scanTimer.seconds());
+
+            telemetry.addData("Scanning...", scanTimer.seconds());
             telemetry.addData("Detected Order", DESIRED_ORDER);
             telemetry.update();
 
@@ -125,72 +147,49 @@ public class red_far_six_zero extends LinearOpMode {
 
         int FINAL_ORDER = DESIRED_ORDER;
 
-
+        // --------------------
+        // PRELOAD SHOOT
+        // --------------------
+        shooter.startSpinning(SHOOTER_TICK_SPEED);
+        shooter.setStartIndexFromOrder(FINAL_ORDER, 1, POSITION_LIST[0]);
+        shooter.goToNextPosition();
         shooter.forceReady();
         shooter.update(false, false);
-        //TODO: FUCKING CHANGE THE 67's
-        shooter.setStartIndexFromOrder(FINAL_ORDER,1,POSITION_LIST[0]);
-        shooter.goToNextPosition();
-        // --------------------
-// SHOOT PRELOAD BALLS
-// --------------------
+
+        turret1.setPosition(0.91);
+        turret2.setPosition(0.91);
+
         ElapsedTime shootTimer = new ElapsedTime();
         shootTimer.reset();
 
-// Spin shooter wheels
-        shoot1.setVelocity(SHOOTER_TICK_SPEED);
-        shoot2.setVelocity(SHOOTER_TICK_SPEED);
-
-        spinner.setPosition(POSITION_LIST[0]);
-
-        //GO TO SHOOTING LOCATION
-        turret1.setPosition(0.79);
-        turret2.setPosition(0.79);
-
-// Keep shooting until shooter FSM says NO_BALLS
         while (opModeIsActive()
                 && shooter.getState() != Shooter.State.NO_BALLS
-                && shootTimer.seconds() <= 14) {
-            boolean allowShoot = shootTimer.seconds() >= 2;
-            shooter.update(
-                    allowShoot,   // shootPressed = true
-                    true    // intakeFull = true (we started with balls)
-            );
+                && shootTimer.seconds() <= 7.5) {
 
-            telemetry.addData("spinner", spinner.getPosition());
-            telemetry.addData("Detected Order", DESIRED_ORDER);
-            telemetry.update();
+            boolean allowShoot = shootTimer.seconds() >= 2.0;
+            shooter.update(allowShoot, true);
+
             telemetry.addData("Shooter State", shooter.getState());
             telemetry.update();
             idle();
         }
 
-// Stop shooter wheels
-        shoot1.setVelocity(0);
-        shoot2.setVelocity(0);
+        shooter.stopSpinning();
 
-        //GO TO INTAKE LOCATION
+        // --------------------
+        // GO TO INTAKE
+        // --------------------
         intakeSubsystem.forceIntakeReady();
         spinner.setPosition(POSITION_LIST[0]);
         Actions.runBlocking(trajectory1);
 
-        // --------------------
-        // INTAKE START
-        // --------------------
         intakeSubsystem.startIntake();
-        intakeSubsystem.forceIntakeReady();
-        shooter.update(false, false);
 
-        // --------------------
-        // CREEP FORWARD (CONSTANT SPEED)
-        // --------------------
         ElapsedTime creepTimer = new ElapsedTime();
         creepTimer.reset();
 
-        while (opModeIsActive()
-                && creepTimer.seconds() < 5) {
+        while (opModeIsActive() && creepTimer.seconds() < 4) {
 
-            // Drive forward
             drive.setDrivePowers(
                     new PoseVelocity2d(
                             new Vector2d(INTAKE_CREEP_SPEED, 0.0),
@@ -199,12 +198,10 @@ public class red_far_six_zero extends LinearOpMode {
             );
             drive.updatePoseEstimate();
 
-            // Read sensors
             c2 = colorBench.getDetectedColor(1, telemetry);
             c3 = colorBench.getDetectedColor(2, telemetry);
             c4 = colorBench.getDetectedColor(3, telemetry);
 
-            // Update intake FSM
             intakeSubsystem.update(
                     c2,
                     c3,
@@ -225,68 +222,51 @@ public class red_far_six_zero extends LinearOpMode {
             idle();
         }
 
-
-// stop
         drive.setDrivePowers(
-                new PoseVelocity2d(
-                        new Vector2d(0.0, 0.0),
-                        0.0
-                )
+                new PoseVelocity2d(new Vector2d(0, 0), 0)
         );
 
-
-        // --------------------
-        // STOP INTAKE
-        // --------------------
         intakeSubsystem.stopIntake();
-
         intakeSubsystem.reverseIntake();
 
-        //go back to shooting place
-        Actions.runBlocking(trajectory2);
-        intakeSubsystem.stopIntake();
-        //TODO: FUCKING CHANGE THE 67's
+        // --------------------
+        // RETURN + FINAL SHOOT
+        // --------------------
         shooter.setStartIndexFromOrder(FINAL_ORDER, 1,POSITION_LIST[0]); // or real detected order
+        shooter.goToNextPosition();
+        Actions.runBlocking(trajectory2);
+
+        intakeSubsystem.stopIntake();
+
+        shooter.startSpinning(SHOOTER_TICK_SPEED);
         shooter.forceReady();
         shooter.update(false, true);
 
         shootTimer.reset();
 
-// Spin shooter wheels
-        shoot1.setVelocity(SHOOTER_TICK_SPEED);
-        shoot2.setVelocity(SHOOTER_TICK_SPEED);
-
-
-
-        //GO TO SHOOTING LOCATION
-        turret1.setPosition(0.79);
-
-        turret2.setPosition(0.79);
-
-// Keep shooting until shooter FSM says NO_BALLS
         while (opModeIsActive()
                 && shooter.getState() != Shooter.State.NO_BALLS
-                && shootTimer.seconds() <= 14) {
-            boolean allowShoot = shootTimer.seconds() >= 1.5;
-            shooter.update(
-                    allowShoot,   // shootPressed = true
-                    true    // intakeFull = true (we started with balls)
-            );
+                && shootTimer.seconds() <= 7.5) {
 
-            telemetry.addData("spinner", spinner.getPosition());
-            telemetry.addData("Detected Order", DESIRED_ORDER);
-            telemetry.update();
+            boolean allowShoot = shootTimer.seconds() >= 2;
+            shooter.update(allowShoot, true);
+
             telemetry.addData("Shooter State", shooter.getState());
             telemetry.update();
             idle();
         }
 
-// Stop shooter wheels
-        shoot1.setVelocity(0);
-        shoot2.setVelocity(0);
+        shooter.stopSpinning();
 
-        Actions.runBlocking(trajectory1);
-        pusher.setPosition(PUSHER_DOWN);
-        spinner.setPosition(POSITION_LIST[0]);
+
+
+        Actions.runBlocking(trajectory3);
+
+        shootTimer.reset();
+        while (opModeIsActive()
+                && shootTimer.seconds() < 1.5) {
+            pusher.setPosition(PUSHER_DOWN);
+            spinner.setPosition(POSITION_LIST[0]);
+        }
     }
 }

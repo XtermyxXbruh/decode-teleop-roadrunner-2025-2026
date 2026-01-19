@@ -13,9 +13,9 @@ import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 
-@Autonomous(name = "pathTesting", group = "Autonomous")
+@Autonomous(name = "path_test", group = "Autonomous")
 public class pathTesting extends LinearOpMode {
-    double INTAKE_CREEP_SPEED = 0.125;
+    double INTAKE_CREEP_SPEED = 0.167;
 
     private IntakeSubsystem intakeSubsystem;
     private colorSensorDecode colorBench;
@@ -26,12 +26,15 @@ public class pathTesting extends LinearOpMode {
     private DcMotorEx shoot1, shoot2;
     private Servo spinner, pusher, turret1, turret2;
 
-    private double PUSHER_UP = 0.567;
-    private double PUSHER_DOWN = 0.27167;
+    private double PUSHER_UP = 0.55;
+    private double PUSHER_DOWN = 0.2467;
 
-    int DESIRED_ORDER = 1;
+    private int DESIRED_ORDER = 1;
 
     private CameraSubsystem camera;
+
+    private int SHOOTER_TICK_SPEED = 1150;
+
 
     @Override
     public void runOpMode() {
@@ -42,12 +45,12 @@ public class pathTesting extends LinearOpMode {
         // POS LIST
         // --------
         final double[] POSITION_LIST = {
-                0.878,
-                0.727,
-                0.5855,
-                0.433,
-                0.26,
-                0.13,
+                0.882,
+                0.7367,
+                0.5885,
+                0.438,
+                0.2732,
+                0.136,
                 0
         };
 
@@ -76,6 +79,20 @@ public class pathTesting extends LinearOpMode {
         shoot1.setDirection(DcMotor.Direction.REVERSE);
         shoot2.setDirection(DcMotor.Direction.REVERSE);
 
+        shoot1.setVelocityPIDFCoefficients(
+                1,  // kP
+                0.0,   // kI
+                0.0,   // kD
+                15.5   // kF (approximate)
+        );
+
+        shoot2.setVelocityPIDFCoefficients(
+                1,
+                0.0,
+                0.0,
+                15.5
+        );
+
         camera = new CameraSubsystem();
         camera.init(hardwareMap);
         camera.setMode(CameraSubsystem.Mode.AUTO);
@@ -92,19 +109,49 @@ public class pathTesting extends LinearOpMode {
 
         Action trajectory1 = drive.actionBuilder(initialPose)
                 .setTangent(Math.toRadians(270))
-                .splineToLinearHeading(new Pose2d(-20, 19, Math.toRadians(90)), Math.toRadians(0))
+                .splineToLinearHeading(
+                        new Pose2d(-25, 25, Math.toRadians(90)),
+                        Math.toRadians(0)
+                )
                 .build();
 
-        Action trajectory2 = drive.actionBuilder(new Pose2d(-20,19,Math.toRadians(0)))
-                .setTangent(Math.toRadians(90))
-                .splineToConstantHeading(new Vector2d(-12,32.5),Math.toRadians(90))
+        Action trajectory2 = drive.actionBuilder(
+                        new Pose2d(-25, 25, Math.toRadians(90))
+                )
+                .setTangent(Math.toRadians(0))
+                .splineToConstantHeading(
+                        new Vector2d(-12, 34),
+                        Math.toRadians(90)
+                )
                 .build();
 
-        Action trajectory3 = drive.actionBuilder(new Pose2d(-12,36,Math.toRadians(90)))
+        Action trajectory3 = drive.actionBuilder(
+                        new Pose2d(-12, 45, Math.toRadians(90))
+                )
                 .setTangent(Math.toRadians(270))
-                .splineToConstantHeading(new Vector2d(-10,9),Math.toRadians(270))
+                .splineToConstantHeading(
+                        new Vector2d(-25, 25),
+                        Math.toRadians(180)
+                )
                 .build();
-
+        Action trajectory4 = drive.actionBuilder(
+                    new Pose2d(-25,25,Math.toRadians(90))
+                )
+                .setTangent(Math.toRadians(0))
+                .splineToConstantHeading(
+                        new Vector2d(12,34),
+                        Math.toRadians(90)
+                )
+                .build();
+        Action trajectory5 = drive.actionBuilder(
+                        new Pose2d(12, 45, Math.toRadians(90))
+                )
+                .setTangent(Math.toRadians(270))
+                .splineToConstantHeading(
+                        new Vector2d(-25, 25),
+                        Math.toRadians(180)
+                )
+                .build();
 
         waitForStart();
         if (isStopRequested()) return;
@@ -113,7 +160,7 @@ public class pathTesting extends LinearOpMode {
         ElapsedTime scanTimer = new ElapsedTime();
         scanTimer.reset();
 
-        while (opModeIsActive() && scanTimer.seconds() < 2.0) {
+        while (opModeIsActive() && scanTimer.seconds() < 1.5) {
             camera.update();
             if (camera.hasOrderTarget()) {
                 DESIRED_ORDER = camera.getDesiredOrderFromTag();
@@ -127,14 +174,16 @@ public class pathTesting extends LinearOpMode {
 
         int FINAL_ORDER = DESIRED_ORDER;
 
+        shooter.startSpinning(1167);
+
         shooter.goToNextPosition();
         shooter.forceReady();
         shooter.update(false, false);
         //TODO: FUCKING CHANGE THE 67's
         shooter.setStartIndexFromOrder(FINAL_ORDER,1,POSITION_LIST[0]);
 
-        turret1.setPosition(0.69);
-        turret2.setPosition(0.69);
+        turret1.setPosition(0.8);
+        turret2.setPosition(0.8);
 
 
 // --------------------
@@ -143,8 +192,6 @@ public class pathTesting extends LinearOpMode {
 
 
 // Spin shooter wheels
-        shoot1.setVelocity(1200);
-        shoot2.setVelocity(1200);
 
         shooter.goToNextPosition();
 
@@ -157,7 +204,7 @@ public class pathTesting extends LinearOpMode {
 // Keep shooting until shooter FSM says NO_BALLS
         while (opModeIsActive()
                 && shooter.getState() != Shooter.State.NO_BALLS
-                && shootTimer.seconds() <= 5) {
+                && shootTimer.seconds() <= 6.5) {
 
             shooter.update(
                     true,   // shootPressed = true
@@ -169,9 +216,6 @@ public class pathTesting extends LinearOpMode {
             idle();
         }
 
-// Stop shooter wheels
-        shoot1.setVelocity(0);
-        shoot2.setVelocity(0);
 
         //GO TO INTAKE LOCATION
         intakeSubsystem.forceIntakeReady();
@@ -192,7 +236,7 @@ public class pathTesting extends LinearOpMode {
         creepTimer.reset();
 
         while (opModeIsActive()
-                && creepTimer.seconds() < 5) {
+                && creepTimer.seconds() < 3.5) {
 
             // Drive forward
             drive.setDrivePowers(
@@ -247,11 +291,11 @@ public class pathTesting extends LinearOpMode {
         intakeSubsystem.reverseIntake();
 
         //go back to shooting place
+        shooter.setStartIndexFromOrder(FINAL_ORDER, 3,POSITION_LIST[0]); // or real detected order
+        shooter.goToNextPosition();
         Actions.runBlocking(trajectory3);
         intakeSubsystem.stopIntake();
-        spinner.setPosition(POSITION_LIST[0]);
         //TODO: FUCKING CHANGE THE 67's
-        shooter.setStartIndexFromOrder(FINAL_ORDER, 3,POSITION_LIST[0]); // or real detected order
         shooter.forceReady();
         shooter.update(false, true);
 
@@ -260,21 +304,20 @@ public class pathTesting extends LinearOpMode {
 // Spin shooter wheels
 //        shoot1.setVelocity(1200);
 //        shoot2.setVelocity(1200);
-        shoot1.setVelocity(1150);
-        shoot2.setVelocity(1150);
+
 
 
         //GO TO SHOOTING LOCATION
         //turret1.setPosition(0.69);
 //        turret2.setPosition(0.69);
-        turret1.setPosition(0.69);
-        turret2.setPosition(0.69);
+        turret1.setPosition(0.8);
+        turret2.setPosition(0.8);
 
 // Keep shooting until shooter FSM says NO_BALLS
         while (opModeIsActive()
                 && shooter.getState() != Shooter.State.NO_BALLS
-                && shootTimer.seconds() <= 6.7) {
-            boolean allowShoot = shootTimer.seconds() >= 1.5;
+                && shootTimer.seconds() <= 5.75) {
+            boolean allowShoot = shootTimer.seconds() >= 0.75;
             shooter.update(
                     allowShoot,   // shootPressed = true
                     true    // intakeFull = true (we started with balls)
@@ -285,20 +328,115 @@ public class pathTesting extends LinearOpMode {
             idle();
         }
 
-// Stop shooter wheels
-        shoot1.setVelocity(0);
-        shoot2.setVelocity(0);
 
-        Actions.runBlocking(trajectory2);
-        pusher.setPosition(PUSHER_DOWN);
+        //GO TO INTAKE LOCATION
+        intakeSubsystem.forceIntakeReady();
         spinner.setPosition(POSITION_LIST[0]);
+        Actions.runBlocking(trajectory4);
+
+        // --------------------
+        // INTAKE START
+        // --------------------
+        intakeSubsystem.startIntake();
+        intakeSubsystem.forceIntakeReady();
+        shooter.update(false, false);
+
+        // --------------------
+        // CREEP FORWARD (CONSTANT SPEED)
+        // --------------------
+        creepTimer.reset();
+
+        while (opModeIsActive()
+                && creepTimer.seconds() < 3.5) {
+
+            // Drive forward
+            drive.setDrivePowers(
+                    new PoseVelocity2d(
+                            new Vector2d(INTAKE_CREEP_SPEED, 0.0),
+                            0.0
+                    )
+            );
+            drive.updatePoseEstimate();
+
+            // Read sensors
+            c2 = colorBench.getDetectedColor(1, telemetry);
+            c3 = colorBench.getDetectedColor(2, telemetry);
+            c4 = colorBench.getDetectedColor(3, telemetry);
+
+            // Update intake FSM
+            intakeSubsystem.update(
+                    c2,
+                    c3,
+                    c4,
+                    shooter.getState()
+            );
+
+            int spinnerIndex = intakeSubsystem.getNextSpinnerIndex();
+            spinnerIndex = Math.max(0, Math.min(spinnerIndex, POSITION_LIST.length - 1));
+            spinner.setPosition(POSITION_LIST[spinnerIndex]);
+
+            shooter.update(false, false);
+
+            telemetry.addData("Spinner Index", spinnerIndex);
+            telemetry.addData("Intake State", intakeSubsystem.getState());
+            telemetry.update();
+
+            idle();
+        }
+
+
+// stop
+        drive.setDrivePowers(
+                new PoseVelocity2d(
+                        new Vector2d(0.0, 0.0),
+                        0.0
+                )
+        );
+
+
+        // --------------------
+        // STOP INTAKE
+        // --------------------
+        intakeSubsystem.stopIntake();
+
+        intakeSubsystem.reverseIntake();
+
+        //go back to shooting place
+        shooter.setStartIndexFromOrder(FINAL_ORDER, 2,POSITION_LIST[0]); // or real detected order
+        shooter.goToNextPosition();
+        Actions.runBlocking(trajectory5);
+        intakeSubsystem.stopIntake();
+        //TODO: FUCKING CHANGE THE 67's
+        shooter.forceReady();
+        shooter.update(false, true);
+
+        shootTimer.reset();
+
+// Spin shooter wheels
+//        shoot1.setVelocity(1200);
+//        shoot2.setVelocity(1200);
 
 
 
-        waitForStart();
-        if (isStopRequested()) return;
+        //GO TO SHOOTING LOCATION
+        //turret1.setPosition(0.69);
+//        turret2.setPosition(0.69);
+        turret1.setPosition(0.8);
+        turret2.setPosition(0.8);
 
-        Actions.runBlocking(trajectory1);
+// Keep shooting until shooter FSM says NO_BALLS
+        while (opModeIsActive()
+                && shooter.getState() != Shooter.State.NO_BALLS
+                && shootTimer.seconds() <= 5.75) {
+            boolean allowShoot = shootTimer.seconds() >= 0.75;
+            shooter.update(
+                    allowShoot,   // shootPressed = true
+                    true    // intakeFull = true (we started with balls)
+            );
 
+            telemetry.addData("Shooter State", shooter.getState());
+            telemetry.update();
+            idle();
+        }
     }
 }

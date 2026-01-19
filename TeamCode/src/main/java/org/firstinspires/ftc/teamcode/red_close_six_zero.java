@@ -27,8 +27,8 @@ public class red_close_six_zero extends LinearOpMode {
     private DcMotorEx shoot1, shoot2;
     private Servo spinner, pusher, turret1, turret2;
 
-    private double PUSHER_UP = 0.567;
-    private double PUSHER_DOWN = 0.27167;
+    private double PUSHER_UP = 0.55;
+    private double PUSHER_DOWN = 0.23;
 
     int DESIRED_ORDER = 1;
 

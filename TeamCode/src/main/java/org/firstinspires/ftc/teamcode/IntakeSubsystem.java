@@ -8,6 +8,9 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 
 public class IntakeSubsystem {
     ElapsedTime intakeTimer = new ElapsedTime();
+
+    ElapsedTime intakeTimedTimer = new ElapsedTime();
+    private boolean reversing = false;
     // =====================
     // INTAKE STATES
     // =====================
@@ -126,5 +129,10 @@ public class IntakeSubsystem {
 
     public void reverseIntake() {
         intakeMotor.setPower(-1);
+    }
+
+    public void intakeRunForTime(double seconds, double motorPower) {
+        reversing = true;
+        intakeTimedTimer.reset();
     }
 }

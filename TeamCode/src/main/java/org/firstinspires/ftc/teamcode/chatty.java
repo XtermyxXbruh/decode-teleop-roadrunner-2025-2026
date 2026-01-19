@@ -33,12 +33,12 @@ public class chatty extends OpMode {
     // SPINNER POSITIONS
     // =====================
     final double[] POSITION_LIST = {
-            0.878,
-            0.727,
-            0.5855,
-            0.433,
-            0.26,
-            0.13,
+            0.8867,
+            0.73,
+            0.58,
+            0.43,
+            0.267,
+            0.131,
             0
     };
 
@@ -55,9 +55,9 @@ public class chatty extends OpMode {
     // TURRET
     // =====================
     private Servo turret1, turret2;
-    private double turretPos = 0.38;
+    private double turretPos = 0.5;
 
-    private static double TURRET_HOME = 0.38;
+    private static double TURRET_HOME = 0.5;
     private static final double TURRET_RETURN_SPEED = 0.01;
 
     //GREEN BALL SHOOT ORDER
@@ -69,8 +69,8 @@ public class chatty extends OpMode {
     //camera
     private CameraSubsystem camera;
 
-    private double PUSHER_UP = 0.567;
-    private double PUSHER_DOWN = 0.27167;
+    private double PUSHER_UP = 0.55;
+    private double PUSHER_DOWN = 0.25;
 
     ElapsedTime shootingAccelTimer = new ElapsedTime();
     @Override
@@ -102,6 +102,21 @@ public class chatty extends OpMode {
 
         shoot1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         shoot2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+// Start with these (example values)
+        shoot1.setVelocityPIDFCoefficients(
+                1,  // kP
+                0.0,   // kI
+                0.0,   // kD
+                15.5   // kF (approximate)
+        );
+
+        shoot2.setVelocityPIDFCoefficients(
+                1,
+                0.0,
+                0.0,
+                15.5
+        );
 
         shoot1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         shoot2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
@@ -141,7 +156,7 @@ public class chatty extends OpMode {
 
         shooter.setStartShootPos(0);
 
-        pusher.setPosition(0.05);
+        pusher.setPosition(PUSHER_DOWN);
 
         telemetry.addLine("Ready!");
         telemetry.update();
@@ -149,6 +164,13 @@ public class chatty extends OpMode {
 
     @Override
     public void loop() {
+        telemetry.addData("Shooter1Velo", shoot1.getVelocity());
+        telemetry.addData("Shooter2Velo", shoot2.getVelocity());
+
+        telemetry.addData("Shooter1Power", shoot1.getPower());
+        telemetry.addData("Shooter2Power", shoot2.getPower());
+
+        telemetry.addData("target velo", SHOOTER_TICK_SPEED);
         // --------------------
         // DRIVE
         // --------------------
@@ -197,9 +219,9 @@ public class chatty extends OpMode {
         } else if (camera.hasAimTarget()) {
             double bearing = camera.getAimBearing();
 
-            double kP = 1.0 / 270;
+            double kP = 1.0 / 200;
             double desired = turretPos + bearing * kP;
-            desired = Math.max(0.0, Math.min(1.0, desired));
+            desired = Math.max(0.2267, Math.min(0.967, desired));
             turretPos += (desired - turretPos) * 0.25;
 
             turret1.setPosition(turretPos);
@@ -217,15 +239,19 @@ public class chatty extends OpMode {
 
         if (gamepad1.dpad_up) {
             SHOOTER_TICK_SPEED = 1415;
+            //shooter.setWaitTime(0);
         }
         if (gamepad1.dpad_down) {
             SHOOTER_TICK_SPEED = 967;
+            shooter.setWaitTime(0);
         }
         if (gamepad1.dpad_right) {
             SHOOTER_TICK_SPEED = 1200;
+            shooter.setWaitTime(0);
         }
         if (gamepad1.dpad_left) {
             SHOOTER_TICK_SPEED = 210;
+            shooter.setWaitTime(0);
 
         }
 
@@ -257,6 +283,11 @@ public class chatty extends OpMode {
         c2 = colorBench.getDetectedColor(1, telemetry);
         c3 = colorBench.getDetectedColor(2, telemetry);
         c4 = colorBench.getDetectedColor(3, telemetry);
+
+        telemetry.addData("c4: ", c4);
+        telemetry.addData("c2: ", c2);
+        telemetry.addData("c3: ", c3);
+
 
 // ---------
 // GREEN BALL DETECTION SORTING
@@ -312,9 +343,15 @@ public class chatty extends OpMode {
 
 
         if (!shooter.isIdle()) {
-            double REAL_SHOOT_SPEED = SHOOTER_TICK_SPEED/(1+Math.pow(2, -2.67 * shootingAccelTimer.seconds()));
-            shoot1.setVelocity(REAL_SHOOT_SPEED);
-            shoot2.setVelocity(REAL_SHOOT_SPEED);
+            double error = SHOOTER_TICK_SPEED - shoot1.getVelocity();
+
+            if (error > 67) { // ball just hit
+                shoot1.setVelocity(SHOOTER_TICK_SPEED + 250);
+                shoot2.setVelocity(SHOOTER_TICK_SPEED + 250);
+            } else {
+                shoot1.setVelocity(SHOOTER_TICK_SPEED);
+                shoot2.setVelocity(SHOOTER_TICK_SPEED);
+            }
         } else {
             shoot1.setVelocity(0);
             shoot2.setVelocity(0);
